@@ -1,0 +1,177 @@
+;;;#############################################################################
+;;;                       加载 .emacs.d 目录下所有文件
+;;;#############################################################################
+;;------------------------------------------------------------------------------
+;; 设置自定义库的加载路径。这样我们就可将库文件（.el 文件）放入 .emacs.d 的目录下供我们加载。当然可以将其他各种主题文件都放在该目录下以供加载使用。
+;;------------------------------------------------------------------------------
+(add-to-list 'load-path (expand-file-name "~/.emacs.d"))
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/color-theme-6.6.0"))
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/color-theme-6.6.0/themes"))
+
+
+;;;#############################################################################
+;;;                          状态栏显示情况设置
+;;;#############################################################################
+;;------------------------------------------------------------------------------
+;; 显示光标行号和列号。
+;;------------------------------------------------------------------------------
+(setq line-number-mode   t)
+(setq column-number-mode t)
+;;------------------------------------------------------------------------------
+;; 显示时间。若要设置显示 24 小时格式，再使用：(setq display-time-24hr-format t)。显示日期：(setq display-time-day-and-date t)。由于显示不怎么好看，所以我没有使用。
+;;------------------------------------------------------------------------------
+(display-time-mode 1)
+
+
+;;;#############################################################################
+;;;                           窗口界面设置
+;;;#############################################################################
+;;------------------------------------------------------------------------------
+;; 启动 emacs 时窗口的大小。一般常用：
+;(setq default-frame-alist '((height . 35) (width . 85) (menu-bar-lines . 20) (tool-bar-lines . 0))) 
+;; 这样我们就将窗口设置 85*35，并且设置了菜单栏的高度 20 和工具栏不显示。去掉工具栏还可以使用命令：(tool-bar-mode -1)，下面已采用。同理去掉菜单栏可以使用命令：(menu-bar-mode -1)。还可以去掉右边的滚动栏：(scroll-bar-mode -1)。下面是使用定义函数的方式设置启动时窗口的大小和位置坐标，这里可参考[1]：
+; [1] http://club.topsage.com/thread-2253938-1-1.html
+;; 使用中感觉还是存在一些问题？？？
+;;------------------------------------------------------------------------------
+(defun arrange-frame (w h x y)
+  "Set the width, height, and x/y position of the current frame"
+  (let ((frame (selected-frame)))
+    (delete-other-windows)
+    (set-frame-position frame x y)
+    (set-frame-size frame w h)
+  )
+)
+(arrange-frame 85 32 0 0)
+;;------------------------------------------------------------------------------
+;; 依次去掉工具栏、菜单栏和右边的滚动条。
+;;------------------------------------------------------------------------------
+(tool-bar-mode -1)
+;(menu-bar-mode -1)
+(scroll-bar-mode -1)
+;;------------------------------------------------------------------------------
+;; 在窗口左侧显示行号。
+;;------------------------------------------------------------------------------
+(global-linum-mode t)
+;;------------------------------------------------------------------------------
+;; 标题栏显示 buffer。
+;;------------------------------------------------------------------------------
+(setq frame-title-format "@%b")
+
+
+
+;;;#############################################################################
+;;;                           内容行为设置
+;;;#############################################################################
+;;------------------------------------------------------------------------------
+;; 高亮显示选中的文本。setq 是关键字，t 表示 true（若为 nil 则表示 false），transient-mark-mode 表示变量。将变量 transient-mark-mode 设置为ture（默认是false）。
+;;------------------------------------------------------------------------------
+(setq transient-mark-mode t) 
+;;------------------------------------------------------------------------------
+;; 显示括号匹配。
+;;------------------------------------------------------------------------------
+(show-paren-mode t)
+;;------------------------------------------------------------------------------
+;; 语法高亮。
+;;------------------------------------------------------------------------------
+(setq global-font-lock-mode t)
+;;------------------------------------------------------------------------------
+;; 自动换行。设置隔 80 个英文字符就换行。
+;;------------------------------------------------------------------------------
+(setq default-fill-column 80) 
+;;------------------------------------------------------------------------------
+;; 显示缩进提示线。参见：http://forum.ubuntu.org.cn/viewtopic.php?p=2606838
+;;------------------------------------------------------------------------------
+(setq dot-vline-xpm
+      (funcall
+       (lambda (width height color)
+         (let* ((w width)
+                (h height)
+                (s1 (concat "\"" (make-string w (string-to-char " ")) "\""))
+                (s2 (concat "\"" (make-string (1- w) (string-to-char " ")) ".\""))
+                (sa (concat s1 ",\n" s2 ",\n")))
+           (eval `(concat "/* XPM */
+static char * dot_vline_xpm[] = {
+\"" (number-to-string w) " " (number-to-string h) " 2 1\",
+\"      c None\",
+\".     c " color "\",\n"
+,@(mapcar (lambda(x) sa)
+          (make-list (1- (/ h 2)) 0))
+s1 ",\n" s2 "};"
+))))
+       10 22 "#ADA5C6"))
+
+(defun indent-vline ()
+  (interactive)
+  (funcall
+   (lambda (x)
+     (font-lock-add-keywords
+      nil `((,x
+             (0 (if (save-excursion
+                      (skip-chars-backward " ")
+                      (bolp))
+                    (let* ((p2 (point))
+                           (p1 (1- p2)))
+                      (if (get-text-property p1 'display)
+                          (remove-text-properties p1 p2 'display)
+                        (set-text-properties p1 p2 `(display (image :type xpm :data ,dot-vline-xpm :pointer arrow :ascent center :mask (heuristic t)) rear-nonsticky (display) fontified t))
+                      nil))))))))
+   "   \\( \\)"))
+(add-hook 'html-mode-hook 'indent-vline)
+(add-hook 'latex-mode-hook 'indent-vline)
+
+;;;#############################################################################
+;;;                           内容颜色显示设置
+;;;#############################################################################
+;;------------------------------------------------------------------------------
+;; 设置颜色主题。制作自己的颜色主题，这里可以参考[a]和[b]：
+; [a] http://jasonm23.github.io/emacs-theme-editor/
+; [b] http://jasonm23.github.io/ 
+;; 其实 emacs 自带了一些颜色主题，可参考：
+; [c] http://batsov.com/articles/2012/02/19/color-theming-in-emacs-reloaded/
+;; 为了使用自带的颜色主题，需要使用命令：
+; (require 'color-theme)
+; (color-theme-matrix)
+; (load-theme 'manoj-dark t)
+;;------------------------------------------------------------------------------
+(defun your-config-name-here ()
+  (interactive)
+  (color-theme-install
+   '(your-config-name-here
+      ((background-color . "#000000")
+      (background-mode . light)
+      (border-color . "#1738ba")
+      (cursor-color . "#3edada")
+      (foreground-color . "#efecec")
+      (mouse-color . "black"))
+     (fringe ((t (:background "#1738ba"))))
+     (mode-line ((t (:foreground "#f4f2f0" :background "#114ca6"))))
+     (region ((t (:background "#4d3232"))))
+     (font-lock-builtin-face ((t (:foreground "#f82520"))))
+     (font-lock-comment-face ((t (:foreground "#20cb20"))))
+     (font-lock-function-name-face ((t (:foreground "#102cc1"))))
+     (font-lock-keyword-face ((t (:foreground "#bf19cc"))))
+     (font-lock-string-face ((t (:foreground "#c77129"))))
+     (font-lock-type-face ((t (:foreground"#151699"))))
+     (font-lock-constant-face ((t (:foreground "#e6c70f"))))
+     (font-lock-variable-name-face ((t (:foreground "#e6c70f"))))
+     (minibuffer-prompt ((t (:foreground "#0fcca0" :bold t))))
+     (font-lock-warning-face ((t (:foreground "red" :bold t))))
+     )))
+(provide 'your-config-name-here)
+(require 'color-theme)
+(color-theme-initialize)
+(your-config-name-here)
+
+
+;;;#############################################################################
+;;;                           配置auctex编写latex文档
+;;;#############################################################################
+(load "auctex.el" nil t t)
+(load "preview-latex.el" nil t t)
+(add-hook 'LaTeX-mode-hook #'LaTeX-install-toolbar)
+(add-hook 'LaTeX-mode-hook 'turn-on-reftex);with AUCTEX LaTeX mode
+(add-hook 'latex-mode-hook 'turn-on-reftex);with Emacs latex mode
+(setq TeX-auto-save t)
+(setq TeX-parse-self t)
+
+
